@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SaaSApp{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js for lightweight interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="flex flex-col min-h-full font-sans antialiased text-slate-900">
+
+    <!-- Flash Messages -->
+    {% if messages %}
+    <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+        {% for message in messages %}
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)"
+             class="p-4 rounded-lg shadow-lg text-sm flex items-center justify-between border
+                    {% if message.tags == 'error' %} bg-red-50 text-red-800 border-red-200
+                    {% else %} bg-emerald-50 text-emerald-800 border-emerald-200 {% endif %}">
+            <span>{{ message }}</span>
+            <button @click="show = false" class="ml-4 font-bold opacity-60 hover:opacity-100">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+
+</body>
+</html>
