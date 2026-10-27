@@ -47,15 +47,16 @@ class PipelineStage(TenantBaseModel):
 
     pipeline = models.ForeignKey(Pipeline, on_delete=models.CASCADE, related_name='stages')
     name = models.CharField(max_length=100)
-    order = models.PositiveSmallIntegerField(help_text='Visual ordering priority e.x (1, 2, 3)')
+    order = models.PositiveSmallIntegerField(
+        help_text='Visual ordering priority e.x (1, 2, 3)',
+        validators=[MinValueValidator(1)]    
+    )
     probability = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         default=10,
         help_text='Win probability percentage (0-100)'
     )
     stage_type = models.CharField(max_length=4, choices=StageType.choices, default=StageType.OPEN, db_index=True)
-    is_closed = models.BooleanField(default=False, editable=False)
-    is_won = models.BooleanField(default=False, editable=False)
 
     class Meta:
         ordering = ['pipeline', 'order']
@@ -68,31 +69,17 @@ class PipelineStage(TenantBaseModel):
                 fields=["workspace", "pipeline", "order"],
                 name="unique_stage_order_per_pipeline",
             ),
+            models.CheckConstraint(
+                condition=models.Q(probability__gte=0, probability__lte=100),
+                name='stage_probability_between_0_and_100'
+            ),
         ]
 
     def __str__(self) -> str:
         return f'{self.pipeline.name} -> {self.name}'
-    
-    def clean(self):
-        super().clean()
-        if self.stage_type == self.StageType.WON:
-            self.is_closed = True
-            self.is_won = True
-            self.probability = 100
-        elif self.stage_type == self.StageType.LOST:
-            self.is_closed = True
-            self.is_won = False
-            self.probability = 0
-        else:
-            self.is_closed = False
-            self.is_won = False
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
 
 class Deal(TenantBaseModel):
-    class Status(models.TextChoices):  # kept only as constants for the service layer
+    class Status(models.TextChoices):
         OPEN = 'OPEN', 'Open'
         WON = 'WON', 'Won'
         LOST = 'LOST', 'Lost'
@@ -112,6 +99,7 @@ class Deal(TenantBaseModel):
         blank=True
     )
 
+    status = models.CharField(max_length=4, choices=Status.choices, default=Status.OPEN, db_index=True)
     won_at = models.DateTimeField(null=True, blank=True)
     lost_at = models.DateTimeField(null=True, blank=True)
     lost_reason = models.CharField(max_length=255, blank=True, null=True)
@@ -129,22 +117,11 @@ class Deal(TenantBaseModel):
         ]
 
     def __str__(self):
-        return f"{self.title} (${self.value})"
+        return f"{self.title} ({self.value})"
 
     @property
     def pipeline(self):
         return self.stage.pipeline if self.stage_id else None
-    
-    @property
-    def status(self) -> str:
-        if not self.stage_id:
-            return self.Status.OPEN
-        return (
-            {
-                PipelineStage.StageType.WON.value: self.Status.WON,
-                PipelineStage.StageType.LOST.value: self.Status.LOST,
-            }.get(self.stage.stage_type, self.Status.OPEN)
-        )
     
     @property
     def weighted_value(self) -> Decimal:

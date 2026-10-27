@@ -15,14 +15,18 @@ class Activity(TenantBaseModel):
         NOTE = 'NOTE', 'Internal Note'
         SYSTEM = 'SYSTEM', 'System Log/Audit'
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name='crm_activities')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, related_name='crm_activities',
+        null=True,
+        blank=True
+    )
 
     activity_type = models.CharField(max_length=7, choices=ActivityType.choices, default=ActivityType.NOTE)
     subject = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-    due_date = models.DateField(null=True, blank=True)
-    completed_at = models.DateField(null=True, blank=True)
-    is_completed = models.BooleanField(default=False)
+    due_date = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.UUIDField()
